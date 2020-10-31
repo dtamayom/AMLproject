@@ -11,6 +11,7 @@ from chainerrl import q_functions
 from chainerrl import replay_buffer 
 import numpy as np
 from osim.env import ProstheticsEnv
+from arguments import parser, print_args
 
 
 env = ProstheticsEnv(visualize=True)
