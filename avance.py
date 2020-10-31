@@ -3,8 +3,20 @@ import chainer #Librería Chainer para el DQN Agent
 import chainer.functions as F
 import chainer.links as L
 import chainerrl
+import numpy as np
+from osim.env import ProstheticsEnv
+
+env = ProstheticsEnv(visualize=True)
 
 env = L2M2019Env(visualize=True)
+
+def phi(obs):
+    """ Convert the data type of the observation to float-32
+    Input: observation (obs)
+    Output:  the processed observation 
+    """ 
+    obs=np.array(obs)
+    return obs.astype(np.float32)
 
 #DQN Agent
 q_func = chainerrl.q_functions.FCStateQFunctionWithDiscreteAction(
@@ -34,7 +46,7 @@ replay_buffer = chainerrl.replay_buffer.ReplayBuffer(capacity=10 ** 6)
 agent = chainerrl.agents.DoubleDQN(
     q_func, optimizer, replay_buffer, gamma, explorer,
     replay_start_size=500, update_interval=1,
-    target_update_interval=100)
+    target_update_interval=100, phi=phi)
 
 n_episodes = 200
 max_episode_len = 200
