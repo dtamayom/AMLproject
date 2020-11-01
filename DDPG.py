@@ -7,6 +7,10 @@ standard_library.install_aliases()  # NOQA
 import argparse
 import logging
 import sys
+import gym                       
+#gym.undo_logger_setup()  # NOQA
+from gym import spaces  
+import gym.wrappers
 
 import numpy as np   
 import matplotlib   
@@ -16,26 +20,21 @@ from matplotlib import style
 style.use('ggplot')
 import os
 
-import gym                       
-#gym.undo_logger_setup()  # NOQA
-from gym import spaces  
-import gym.wrappers
+from osim.env import ProstheticsEnv   # Environment con la prótesis
 
-from osim.env import ProstheticsEnv   # Open simulator (OSIM), an open source simnulation for biomechanical modeling.
-
-import chainer                               # Deep learning framework. Chainerrl, 
-from chainer import optimizers               # a collection of Neural Network optimizers.
-from chainerrl.agents.ddpg import DDPG       # a DDPG agent from a RL library based on chainer framework.
-from chainerrl.agents.ddpg import DDPGModel  # a DDPG model, combines the policy network and the value function network.
-from chainerrl import explorers              # a collection of explores functions.
-from chainerrl import misc                   # a collection of utility functions to manipulate the environemnts.
-from chainerrl import policy                 # a policy network
-from chainerrl import q_functions            # a value function network
-from chainerrl import replay_buffer          # a Replay buffer to store a set of observations for the DDPG agent.
+import chainer                               
+from chainer import optimizers               
+from chainerrl.agents.ddpg import DDPG      
+from chainerrl.agents.ddpg import DDPGModel  
+from chainerrl import explorers              
+from chainerrl import misc                  
+from chainerrl import policy                 
+from chainerrl import q_functions           
+from chainerrl import replay_buffer          
 from arguments import parser, print_args
-import pdb #pdb.set_trace()
+import pdb 
 
-# Chainer's settings
+
 seed=0
 gpu=0   # a GPU device id
 
@@ -93,8 +92,6 @@ def make_env(test,render=False):
     # Use different random seeds for train and test envs
     env_seed = 2 ** 32 - 1 - seed if test else seed
     env.seed(env_seed)
-    #if args.monitor:
-        #env = gym.wrappers.Monitor(env, args.outdir)
     if isinstance(env.action_space, spaces.Box):
         misc.env_modifiers.make_action_filtered(env, clip_action_filter)
     if not test:
@@ -104,7 +101,7 @@ def make_env(test,render=False):
     return env
 
 def graph_reward(reward, eps, saveas):
-    name = saveas + '.png'
+    name = saveas + eps + '.png'
     episodes = np.linspace(0,eps,eps)
     plt.figure()
     plt.plot(episodes,reward,'cadetblue',label='DDPG')
@@ -113,6 +110,17 @@ def graph_reward(reward, eps, saveas):
     plt.ylabel("Reward")
     plt.savefig(os.path.join('graphs',name))
     plt.close()
+
+def reward_shape(env):
+    state_desc = env.get_state_desc()
+    penalty = 0.
+    penalty += (state_desc["body_vel"]["pelvis"][0] - 3.0) ** 2
+    penalty += (state_desc["body_vel"]["pelvis"][2]) ** 2
+    penalty += np.sum(np.array(env.osim_model.get_activations()) ** 2) * 0.001
+    if state_desc["body_pos"]["pelvis"][1] < 0.70:
+        penalty += 10  # penalize falling more
+
+    return penalty
 
 # Set a random seed used in ChainerRL
 misc.set_random_seed(seed)
@@ -185,6 +193,8 @@ for ep in range(1, args.num_episodes+ 1):
     while not done and t < args.max_episode_length:
         env.render()
         action = agent.act_and_train(obs, reward)
+        penalty = reward_shape(env)
+        reward -= penalty
         obs, reward, done, _ = env.step(action)
         R += reward
         episode_rewards.append(reward)
