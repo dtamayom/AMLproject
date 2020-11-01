@@ -10,11 +10,17 @@ from chainerrl import policy
 from chainerrl import q_functions            
 from chainerrl import replay_buffer 
 import numpy as np
+import os
 from osim.env import ProstheticsEnv
 from arguments import parser, print_args
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
 args = parser()
 
-env = ProstheticsEnv(visualize=True)
+env = ProstheticsEnv(visualize=False)
 env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None) #Se empieza con dificultad 0, prótesis y 3D
 #El action space para el modelo escogido es vector de lenght 19
 observation = env.reset(project = True)
@@ -61,7 +67,7 @@ agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
                  phi=phi,minibatch_size=128
             )
 
-
+reward_over_time = []
 # construct a controller, i.e. a function from the state space (current positions, velocities and accelerations of joints) to action space (muscle excitations), that will enable to model to travel as far as possible in a fixed amount of time.
 total_reward = 0.0
 for ep in range(1, args.numep + 1):
@@ -71,7 +77,7 @@ for ep in range(1, args.numep + 1):
     reward_sum = 0
     done = False
     while not done:
-        env.render()
+        #env.render()
         action = agent.act_and_train(obs, reward)
         observation, reward, done, info = env.step(action, project = True)
         total_reward += reward
@@ -79,10 +85,24 @@ for ep in range(1, args.numep + 1):
         rbuf.append(obs, action, reward) 
     print('Episodio: ', ep)
     print('Reward del episodio:', reward_sum)  
+    reward_over_time.append(reward_sum)
     
 
 # Your reward is
 print("Total reward %f" % total_reward)
+
+def graph_reward(reward, saveas):
+    name = saveas + '.png'
+    episodes = np.linspace(0,args.numep,args.numep)
+    plt.figure()
+    plt.plot(episodes,reward,'cadetblue',label='DDPG')
+    plt.legend()
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.savefig(os.path.join('graphs',name))
+    plt.close()
+
+graph_reward(reward_over_time,'DDPG')
 
 
 #Sources
