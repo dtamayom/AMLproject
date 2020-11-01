@@ -221,7 +221,7 @@ for ep in range(1, args.num_episodes+ 1):
     # Save the model every 100 episode.       
     if ep%100==0:
         agent.save("DDPG_Prosthetic_model")
-    if ep%==0:
+    if ep%20==0:
         graph_reward(G, ep, 'DDPGargs')
                 
                 
