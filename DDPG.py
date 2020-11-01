@@ -1,4 +1,3 @@
-# Import helper libraries
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
@@ -9,82 +8,41 @@ import argparse
 import logging
 import sys
 
-#___________________________________________________________________
-# Import scientific libraries
-
-import numpy as np               # Numpy, a good library to deal with matrices in python.
-import matplotlib.pyplot as plt  # Matplotlib, a good library for plotting in python.
+import numpy as np   
+import matplotlib   
+matplotlib.use('Agg')         
+import matplotlib.pyplot as plt 
 from matplotlib import style
-#___________________________________________________________________
-import gym                       # Gym, a collection of RL environemnts.
+style.use('ggplot')
+import os
+
+import gym                       
 #gym.undo_logger_setup()  # NOQA
 from gym import spaces  
 import gym.wrappers
 
 from osim.env import ProstheticsEnv   # Open simulator (OSIM), an open source simnulation for biomechanical modeling.
 
-#___________________________________________________________________
-
-
-import chainer                               # Chainer, a python-based deep learning framework. Chainerrl, a reinforcement learning library based on chainer framework.
+import chainer                               # Deep learning framework. Chainerrl, 
 from chainer import optimizers               # a collection of Neural Network optimizers.
-from chainerrl.agents.ddpg import DDPG       # a DDPG agent
-from chainerrl.agents.ddpg import DDPGModel  # a DDPG model, responsibles to combine the policy network and the value function network.
+from chainerrl.agents.ddpg import DDPG       # a DDPG agent from a RL library based on chainer framework.
+from chainerrl.agents.ddpg import DDPGModel  # a DDPG model, combines the policy network and the value function network.
 from chainerrl import explorers              # a collection of explores functions.
 from chainerrl import misc                   # a collection of utility functions to manipulate the environemnts.
 from chainerrl import policy                 # a policy network
 from chainerrl import q_functions            # a value function network
 from chainerrl import replay_buffer          # a Replay buffer to store a set of observations for the DDPG agent.
-
-style.use('ggplot')
-
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import os
+from arguments import parser, print_args
 
 # Chainer's settings
 seed=0
 gpu=0   # a GPU device id
 
-# Hyperparameters: 1
+#Get argument values and print them
+args = parser()
+print_args()
 
-
-# Policy Network ( Actor ).
-
-actor_hidden_layers=3                        # Number of hidden layers.
-actor_hidden_units=300                       # Number of hidden units
-actor_lr=1e-4                                # learning rate
-
-# Value function Network ( Critic )
-critic_hidden_layers=3                       # Number of hidden layers.
-critic_hidden_units=300                      # Number of hidden units
-critic_lr=1e-3                               # learning rate.
-
-# Hyperparameters: 2
-
-number_of_episodes=2000                     # Number of episodes
-max_episode_length=1000                     # Max length of the episode.
-
-replay_buffer_size=5 * 10 ** 5              # the size of the replay buffer.
-replay_start_size=5000                      # the size of the replay buffer when the network starts the training step.
-number_of_update_times=1                    # Number of repetition of update.
-
-target_update_interval=1                    # Target update interval in each step.
-target_update_method='soft'                 # the type of update: hard or soft.
-
-soft_update_tau=1e-2                        # The value of Tau  in the soft target update.
-update_interval=4                           # Model update interval in eac step.
-number_of_eval_runs=100
-# eval_interval=10 ** 5
-
-# final_exploration_steps=10 ** 6            
-
-gamma=0.995                               # Discount factor
-minibatch_size=128                        # Batch size
-
-# Helper's functions
-
+#Helper functions
 def clip_action_filter(a):
     """ limit the an action value between the higest and lowest values in action space.
     Input: a
@@ -167,16 +125,16 @@ action_size = np.asarray(action_space.shape).prod()
 q_func = q_functions.FCSAQFunction(
             160, 
             action_size,
-            n_hidden_channels=critic_hidden_units,
-            n_hidden_layers=critic_hidden_layers)
+            n_hidden_channels=args.critic_hidden_units,
+            n_hidden_layers=args.critic_hidden_layers)
 
 # Policy Network
 
 pi = policy.FCDeterministicPolicy(
             160, 
             action_size=action_size,
-            n_hidden_channels=actor_hidden_units,
-            n_hidden_layers=actor_hidden_layers,
+            n_hidden_channels=args.actor_hidden_units,
+            n_hidden_layers=args.actor_hidden_layers,
             min_action=action_space.low, 
             max_action=action_space.high,
             bound_action=True)
@@ -184,32 +142,32 @@ pi = policy.FCDeterministicPolicy(
 # The Model
 
 model = DDPGModel(q_func=q_func, policy=pi)
-opt_actor = optimizers.Adam(alpha=actor_lr)
-opt_critic = optimizers.Adam(alpha=critic_lr)
+opt_actor = optimizers.Adam(alpha=args.actor_lr)
+opt_critic = optimizers.Adam(alpha=args.critic_lr)
 opt_actor.setup(model['policy'])
 opt_critic.setup(model['q_function'])
 opt_actor.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
 opt_critic.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 
-rbuf = replay_buffer.ReplayBuffer(replay_buffer_size)
+rbuf = replay_buffer.ReplayBuffer(args.replay_buffer_size)
 ou_sigma = (action_space.high - action_space.low) * 0.2
 
 explorer = explorers.AdditiveOU(sigma=ou_sigma)
 
 # The agent
-agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=gamma,
-                 explorer=explorer, replay_start_size=replay_start_size,
-                 target_update_method=target_update_method,
-                 target_update_interval=target_update_interval,
-                 update_interval=update_interval,
-                 soft_update_tau=soft_update_tau,
-                 n_times_update=number_of_update_times,
-                 phi=phi,minibatch_size=minibatch_size
+agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
+                 explorer=explorer, replay_start_size=args.replay_start_size,
+                 target_update_method=args.target_update_method,
+                 target_update_interval=args.target_update_interval,
+                 update_interval=args.update_interval,
+                 soft_update_tau=args.soft_update_tau,
+                 n_times_update=args.number_of_update_times,
+                 phi=phi,minibatch_size=args.minibatch_size
             )
 
 G=[]
 G_mean=[]
-for ep in range(1, number_of_episodes+ 1):
+for ep in range(1, args.num_episodes+ 1):
     
     obs = env.reset()
     reward = 0
@@ -217,7 +175,7 @@ for ep in range(1, number_of_episodes+ 1):
     R = 0  # return (sum of rewards)
     t = 0  # time step
     episode_rewards=[]
-    while not done and t < max_episode_length:
+    while not done and t < args.max_episode_length:
         env.render()
         action = agent.act_and_train(obs, reward)
         obs, reward, done, _ = env.step(action)
@@ -225,7 +183,7 @@ for ep in range(1, number_of_episodes+ 1):
         episode_rewards.append(reward)
         t += 1
         
-    if done or t > max_episode_length:
+    if done or t > args.max_episode_length:
             
         # Calculate sum of the rewards
         episode_rewards_sum = sum(episode_rewards)     
@@ -253,14 +211,14 @@ for ep in range(1, number_of_episodes+ 1):
     agent.stop_episode_and_train(obs, reward, done)
     
     
-print('Finished.')
+print('Finished!!!')
 
-plt.plot(G)
+plt.plot(G, color='cadetblue')
 plt.ylabel('Returns')
 plt.xlabel('Number of episodes')
 plt.savefig("DDPG_Prosthetic_Episodes_VS_Returns.png")
 
-plt.plot(G_mean)
+plt.plot(G_mean, color='darkgoldenrod')
 plt.ylabel('Average of Returns ')
 plt.xlabel('Number of episodes')
 plt.savefig("DDPG_Prosthetic_AverageEpisodes_VS_Returns.png")
