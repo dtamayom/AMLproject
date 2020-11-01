@@ -247,7 +247,7 @@ for ep in range(1, number_of_episodes+ 1):
     if ep%100==0:
         agent.save("DDPG_Prosthetic_model")
     if ep%20==0:
-        graph_reward(G,ep,'DDPG_complete')
+        graph_reward(G,ep,'DDPG')
                 
                 
     agent.stop_episode_and_train(obs, reward, done)
