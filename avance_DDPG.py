@@ -19,6 +19,7 @@ env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None) #Se empie
 #El action space para el modelo escogido es vector de lenght 19
 observation = env.reset(project = True)
 
+
 # Sizes environment
 #np.asarray(env.observation_space.shape).prod() 
 print(args.obs_size)
@@ -30,6 +31,7 @@ q_func = q_functions.FCSAQFunction(args.obs_size, action_size, n_hidden_channels
 # Policy 
 pi = policy.FCDeterministicPolicy(args.obs_size, action_size=action_size, n_hidden_channels=args.hidd_lay, n_hidden_layers=args.c_hidd_lay, min_action=env.action_space.low, max_action=env.action_space.high, bound_action=True)
 
+print(env.action_space)
 
 # El Modelo
 
@@ -42,8 +44,8 @@ opt_actor.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_a')
 opt_critic.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 rbuf = replay_buffer.ReplayBuffer(5 * 10 ** 5 )
 ou_sigma = (env.action_space.high - env.action_space.low) * 0.2
-explorer = explorers.AdditiveOU(sigma=ou_sigma)
-
+#explorer = explorers.AdditiveOU(sigma=ou_sigma)
+explorer = chainerrl.explorers.ConstantEpsilonGreedy(epsilon=0.2, random_action_func=env.action_space.sample)
 
 phi = lambda x: np.array(x).astype(np.float32, copy=False) #COnverir datatype de la observación 
 
@@ -66,14 +68,18 @@ for ep in range(1, args.numep + 1):
     # make a step given by the controller and record the state and the reward
     obs = env.reset()
     reward = 0
+    reward_sum = 0
     done = False
     while not done:
         env.render()
         action = agent.act_and_train(obs, reward)
         observation, reward, done, info = env.step(action, project = True)
         total_reward += reward
-        print('Episodio: ', ep)
-        print('Reward', reward)
+        reward_sum += reward
+        rbuf.append(obs, action, reward) 
+    print('Episodio: ', ep)
+    print('Reward del episodio:', reward_sum)  
+    
 
 # Your reward is
 print("Total reward %f" % total_reward)
