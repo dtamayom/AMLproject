@@ -101,7 +101,7 @@ def make_env(test,render=False):
     return env
 
 def graph_reward(reward, eps, saveas):
-    name = saveas + eps + '.png'
+    name = saveas + str(eps) + '.png'
     episodes = np.linspace(0,eps,eps)
     plt.figure()
     plt.plot(episodes,reward,'cadetblue',label='DDPG')
@@ -221,8 +221,8 @@ for ep in range(1, args.num_episodes+ 1):
     # Save the model every 100 episode.       
     if ep%100==0:
         agent.save("DDPG_Prosthetic_model")
-    if ep%20==0:
-        graph_reward(G,ep,'DDPGargs')
+    if ep%==0:
+        graph_reward(G, ep, 'DDPGargs')
                 
                 
     agent.stop_episode_and_train(obs, reward, done)
