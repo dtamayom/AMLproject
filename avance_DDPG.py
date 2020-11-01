@@ -33,6 +33,7 @@ action_size = np.asarray(env.action_space.shape).prod() #19
 
 # Función Q
 q_func = q_functions.FCSAQFunction(args.obs_size, action_size, n_hidden_channels=args.hidd_lay, n_hidden_layers=args.c_hidd_lay)
+q_func.to_gpu(0)
 
 # Policy 
 pi = policy.FCDeterministicPolicy(args.obs_size, action_size=action_size, n_hidden_channels=args.hidd_lay, n_hidden_layers=args.c_hidd_lay, min_action=env.action_space.low, max_action=env.action_space.high, bound_action=True)
@@ -67,6 +68,26 @@ agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
                  phi=phi,minibatch_size=128
             )
 
+def graph_reward(reward, saveas, epochs):
+    name = saveas + '.png'
+    episodes = np.linspace(0,epochs,epochs)
+    plt.figure()
+    plt.plot(episodes,reward,'cadetblue',label='DDPG')
+    plt.legend()
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.savefig(os.path.join('graphs',name))
+    plt.close()
+
+
+# def reward_shape():
+#         state_desc = self.get_state_desc()
+#         prev_state_desc = self.get_prev_state_desc()
+#         if not prev_state_desc:
+#             return 0
+#         return 9.0 - (state_desc["body_vel"]["pelvis"][0] - 3.0)**2
+
+
 reward_over_time = []
 # construct a controller, i.e. a function from the state space (current positions, velocities and accelerations of joints) to action space (muscle excitations), that will enable to model to travel as far as possible in a fixed amount of time.
 total_reward = 0.0
@@ -82,27 +103,19 @@ for ep in range(1, args.numep + 1):
         observation, reward, done, info = env.step(action, project = True)
         total_reward += reward
         reward_sum += reward
-        rbuf.append(obs, action, reward) 
+        #rbuf.append(obs, action, reward) 
     print('Episodio: ', ep)
     print('Reward del episodio:', reward_sum)  
     reward_over_time.append(reward_sum)
-    
+    if ep % 100 == 0:
+        graph_reward(reward_over_time,'DDPG' + str(ep), ep)
 
 # Your reward is
 print("Total reward %f" % total_reward)
 
-def graph_reward(reward, saveas):
-    name = saveas + '.png'
-    episodes = np.linspace(0,args.numep,args.numep)
-    plt.figure()
-    plt.plot(episodes,reward,'cadetblue',label='DDPG')
-    plt.legend()
-    plt.xlabel("Episode")
-    plt.ylabel("Reward")
-    plt.savefig(os.path.join('graphs',name))
-    plt.close()
 
-graph_reward(reward_over_time,'DDPG')
+
+
 
 
 #Sources
