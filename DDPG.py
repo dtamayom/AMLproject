@@ -33,6 +33,7 @@ from chainerrl import policy                 # a policy network
 from chainerrl import q_functions            # a value function network
 from chainerrl import replay_buffer          # a Replay buffer to store a set of observations for the DDPG agent.
 from arguments import parser, print_args
+import pdb #pdb.set_trace()
 
 # Chainer's settings
 seed=0
@@ -40,7 +41,7 @@ gpu=0   # a GPU device id
 
 #Get argument values and print them
 args = parser()
-print_args()
+print_args(args)
 
 #Helper functions
 def clip_action_filter(a):
@@ -205,7 +206,7 @@ for ep in range(1, args.num_episodes+ 1):
     if ep%100==0:
         agent.save("DDPG_Prosthetic_model")
     if ep%20==0:
-        graph_reward(G,ep,'DDPG')
+        graph_reward(G,ep,'DDPGargs')
                 
                 
     agent.stop_episode_and_train(obs, reward, done)
