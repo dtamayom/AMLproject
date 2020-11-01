@@ -59,13 +59,15 @@ def reward_filter(r):
     return r *1 #1e-2
 
 
-def phi(obs):
-    """ Convert the data type of the observation to float-32
-    Input: observation (obs)
-    Output:  the processed observation 
-    """ 
-    obs=np.array(obs)
-    return obs.astype(np.float32)
+# def phi(obs):
+#     """ Convert the data type of the observation to float-32
+#     Input: observation (obs)
+#     Output:  the processed observation 
+#     """ 
+#     obs=np.array(obs)
+#     return obs.astype(np.float32)
+
+phi = lambda x: np.array(x).astype(np.float32, copy=False) #COnverir datatype de la observación
 
 
 def random_action():
@@ -87,6 +89,7 @@ def make_env(test,render=False):
     """ 
         
     env = ProstheticsEnv(visualize=render)
+    env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
     # Use different random seeds for train and test envs
     env_seed = 2 ** 32 - 1 - seed if test else seed
     env.seed(env_seed)
@@ -154,6 +157,9 @@ rbuf = replay_buffer.ReplayBuffer(args.replay_buffer_size)
 ou_sigma = (action_space.high - action_space.low) * 0.2
 
 explorer = explorers.AdditiveOU(sigma=ou_sigma)
+#explorer = chainerrl.explorers.ConstantEpsilonGreedy(epsilon=0.2, random_action_func=env.action_space.sample)
+
+
 
 # The agent
 agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
