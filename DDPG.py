@@ -182,6 +182,7 @@ agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
 
 G=[]
 G_mean=[]
+best_reward=-1000
 for ep in range(1, args.num_episodes+ 1):
     
     obs = env.reset()
@@ -207,8 +208,8 @@ for ep in range(1, args.num_episodes+ 1):
         G.append(episode_rewards_sum)
         total_G = np.sum(G)
         maximumReturn = np.amax(G)
-        if ep % 1 == 0:
-                
+        if ep % 1 == 0:    
+
             print("==========================================")
             print("Episode: ", ep)
             print("Rewards: ", episode_rewards_sum)
@@ -219,9 +220,12 @@ for ep in range(1, args.num_episodes+ 1):
             print("Mean Reward", total_reward_mean)
             
     # Save the model every 100 episode.       
-    if ep%100==0:
-        agent.save("DDPG_Prosthetic_model")
-    if ep%20==0:
+    if episode_rewards_sum>best_reward:
+        best_reward=episode_rewards_sum
+        agent.save("DDPG_best_model")
+        print('new best', ep)
+
+    if ep%50==0:
         graph_reward(G, ep, 'DDPGargs')
                 
                 
