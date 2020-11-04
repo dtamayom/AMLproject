@@ -11,7 +11,6 @@ import gym
 #gym.undo_logger_setup()  # NOQA
 from gym import spaces  
 import gym.wrappers
-
 import numpy as np   
 import matplotlib   
 matplotlib.use('Agg')         
@@ -21,7 +20,6 @@ style.use('ggplot')
 import os
 
 from osim.env import ProstheticsEnv   # Environment con la prótesis
-
 import chainer                               
 from chainer import optimizers               
 from chainerrl.agents.ddpg import DDPG      
@@ -34,9 +32,8 @@ from chainerrl import replay_buffer
 from arguments import parser, print_args
 import pdb 
 
-
 seed=0
-gpu=0   # a GPU device id
+gpu=0   # GPU device id
 
 #Get argument values and print them
 args = parser()
@@ -44,25 +41,15 @@ print_args(args)
 
 #Helper functions
 def clip_action_filter(a):
-    """ limit the an action value between the higest and lowest values in action space.
-    Input: a
-    Output: clipped action
-    """
+    #limit actions between highest and lowest action in space
     return np.clip(a, action_space.low, action_space.high)
 
 def reward_filter(r):
-    """ Scale the reward value.
-    Input: reward (r)
-    Output: scaled reward
-    """
+    #Reward value scaled
     return r *1 #1e-2
 
 
 # def phi(obs):
-#     """ Convert the data type of the observation to float-32
-#     Input: observation (obs)
-#     Output:  the processed observation 
-#     """ 
 #     obs=np.array(obs)
 #     return obs.astype(np.float32)
 
@@ -70,10 +57,6 @@ phi = lambda x: np.array(x).astype(np.float32, copy=False) #COnverir datatype de
 
 
 def random_action():
-    """ Generate a random action.
-    Input: None
-    Output:  a random action
-    """ 
     a = action_space.sample()
     if isinstance(a, np.ndarray):
         a = a.astype(np.float32)
@@ -81,11 +64,6 @@ def random_action():
 
 
 def make_env(test,render=False):
-    
-    """ Create an instance from "ProstheticEnv" environment
-    Input: a boolean value to show if it's an agent training experiment or test experiment (test)
-    Output:  "ProstheticEnv" environment (env)
-    """ 
         
     env = ProstheticsEnv(visualize=render)
     env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
@@ -111,14 +89,14 @@ def graph_reward(reward, eps, saveas):
     plt.savefig(os.path.join('graphs',name))
     plt.close()
 
-def reward_shape(env):
+def penalties(env):
     state_desc = env.get_state_desc()
     penalty = 0.
     penalty += (state_desc["body_vel"]["pelvis"][0] - 3.0) ** 2
     penalty += (state_desc["body_vel"]["pelvis"][2]) ** 2
     penalty += np.sum(np.array(env.osim_model.get_activations()) ** 2) * 0.001
-    if state_desc["body_pos"]["pelvis"][1] < 0.70:
-        penalty += 10  # penalize falling more
+    if state_desc["body_pos"]["pelvis"][1] < 0.70: #falling
+        penalty += 10  
 
     return penalty
 
@@ -129,11 +107,9 @@ misc.set_random_seed(seed)
 env = make_env(test=False,render=False)
 obs_size = np.asarray(env.observation_space.shape).prod()
 action_space = env.action_space
-
 action_size = np.asarray(action_space.shape).prod()
 
 # Critic Network
-
 q_func = q_functions.FCSAQFunction(
             160, 
             action_size,
@@ -141,7 +117,6 @@ q_func = q_functions.FCSAQFunction(
             n_hidden_layers=args.critic_hidden_layers)
 
 # Policy Network
-
 pi = policy.FCDeterministicPolicy(
             160, 
             action_size=action_size,
@@ -152,7 +127,6 @@ pi = policy.FCDeterministicPolicy(
             bound_action=True)
 
 # The Model
-
 model = DDPGModel(q_func=q_func, policy=pi)
 opt_actor = optimizers.Adam(alpha=args.actor_lr)
 opt_critic = optimizers.Adam(alpha=args.critic_lr)
@@ -164,10 +138,9 @@ opt_critic.add_hook(chainer.optimizer.GradientClipping(1.0), 'hook_c')
 rbuf = replay_buffer.ReplayBuffer(args.replay_buffer_size)
 ou_sigma = (action_space.high - action_space.low) * 0.2
 
+#Possible explorers
 explorer = explorers.AdditiveOU(sigma=ou_sigma)
 #explorer = chainerrl.explorers.ConstantEpsilonGreedy(epsilon=0.2, random_action_func=env.action_space.sample)
-
-
 
 # The agent
 agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
@@ -194,7 +167,7 @@ for ep in range(1, args.num_episodes+ 1):
     while not done and t < args.max_episode_length:
         env.render()
         action = agent.act_and_train(obs, reward)
-        penalty = reward_shape(env)
+        penalty = penalties(env) #Penalties calc
         reward -= penalty
         obs, reward, done, _ = env.step(action)
         R += reward
@@ -225,14 +198,13 @@ for ep in range(1, args.num_episodes+ 1):
         agent.save("DDPG_best_model")
         print('new best', ep)
 
+    #generate graph of rewards vs episodes
     if ep%50==0:
-        graph_reward(G, ep, 'DDPGargs')
-                
-                
+        graph_reward(G, ep, 'DDPGargs')    
     agent.stop_episode_and_train(obs, reward, done)
     
     
-print('Finished!!!')
+print('Good job Alan')
 
 plt.plot(G, color='cadetblue')
 plt.ylabel('Returns')
