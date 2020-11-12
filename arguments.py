@@ -3,7 +3,7 @@ import argparse
 def parser():
     parser = argparse.ArgumentParser(description='Parameter Summary')
 
-    parser.add_argument('--num_episodes',default=2000,help='Number of episodes')
+    parser.add_argument('--num_episodes',default=3000,help='Number of episodes')
     parser.add_argument('--max_episode_length',default=1000,help='Maximum episode length')
 
     parser.add_argument('--critic_lr', default=1e-3, help='Critic learning rate')
@@ -27,6 +27,8 @@ def parser():
     parser.add_argument('--soft_update_tau', default=1e-2, help='The value of Tau  in the soft target update')
     parser.add_argument('--update_interval', default=4, help='Model update interval in each step')
     parser.add_argument('--number_of_eval_runs', default=100)
+    #Test
+    parser.add_argument('--test_epochs', default=10)
 
     # eval_interval=10 ** 5
     # final_exploration_steps=10 ** 6       
