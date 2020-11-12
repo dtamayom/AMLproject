@@ -63,7 +63,7 @@ def random_action():
     return a
 
 
-def make_env(test,render=False):
+def make_env(test,render=True):
         
     env = ProstheticsEnv(visualize=render)
     env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
@@ -99,6 +99,9 @@ def penalties(env):
         penalty += 10  
 
     return penalty
+
+def velocity(env):
+    state_desc = env.get_state_desc()
 
 # Set a random seed used in ChainerRL
 misc.set_random_seed(seed)
@@ -191,6 +194,9 @@ for ep in range(1, args.num_episodes+ 1):
             total_reward_mean = np.divide(total_G, ep+1)
             G_mean.append(total_reward_mean)
             print("Mean Reward", total_reward_mean)
+            # Statistics
+            print('Statistics Alan:', agent.get_statistics())
+
             
     # Save the model every 100 episode.       
     if episode_rewards_sum>best_reward:
