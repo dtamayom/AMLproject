@@ -196,13 +196,15 @@ for ep in range(1, args.num_episodes+ 1):
             print("Mean Reward", total_reward_mean)
             # Statistics
             print('Statistics Alan:', agent.get_statistics())
-
-            
-    # Save the model every 100 episode.       
+     
     if episode_rewards_sum>best_reward:
         best_reward=episode_rewards_sum
         agent.save("DDPG_best_model")
         print('new best', ep)
+
+    # Save the model every 100 episode.
+    if ep%100==0:
+        agent.save("DDPG_last_model")
 
     #generate graph of rewards vs episodes
     if ep%50==0:
