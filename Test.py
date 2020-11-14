@@ -71,6 +71,7 @@ for i in range(args.test_epochs):
     t = 0
     while not done and t < 200:
         env.render()
+        agent.load("DDPG_best_model")
         action = agent.act(obs)
         obs, r, done, x = env.step(action)
         reward_Alan += r
