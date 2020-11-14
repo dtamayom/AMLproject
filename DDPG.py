@@ -102,12 +102,13 @@ def penalties(env):
 
 def velocity(env):
     state_desc = env.get_state_desc()
+    state_desc["body_vel"]["pelvis"] = 1000
 
 # Set a random seed used in ChainerRL
 misc.set_random_seed(seed)
 
 # Setup the environment
-env = make_env(test=False,render=False)
+env = make_env(test=False,render=True)
 obs_size = np.asarray(env.observation_space.shape).prod()
 action_space = env.action_space
 action_size = np.asarray(action_space.shape).prod()
@@ -118,6 +119,8 @@ q_func = q_functions.FCSAQFunction(
             action_size,
             n_hidden_channels=args.critic_hidden_units,
             n_hidden_layers=args.critic_hidden_layers)
+
+#q_func.to_gpu(0) #Poner en la GPU
 
 # Policy Network
 pi = policy.FCDeterministicPolicy(
@@ -159,9 +162,12 @@ agent = DDPG(model, opt_actor, opt_critic, rbuf, gamma=args.gamma,
 G=[]
 G_mean=[]
 best_reward=-1000
+#chainer.cuda.get_device_from_id(1).use() #Para la GPU corregir
 for ep in range(1, args.num_episodes+ 1):
     
-    obs = env.reset()
+    obs = env.reset(project= True)
+    print("velicity")
+    print(obs)
     reward = 0
     done = False
     R = 0  # return (sum of rewards)
@@ -171,6 +177,7 @@ for ep in range(1, args.num_episodes+ 1):
         env.render()
         action = agent.act_and_train(obs, reward)
         penalty = penalties(env) #Penalties calc
+        velocity(env)
         reward -= penalty
         obs, reward, done, _ = env.step(action)
         R += reward
