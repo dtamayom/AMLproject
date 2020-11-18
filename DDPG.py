@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 from matplotlib import style
 style.use('ggplot')
 import os
-
 from osim.env import ProstheticsEnv   # Environment con la prótesis
-import chainer                               
+import chainer    
+from chainer import cuda                           
 from chainer import optimizers               
 from chainerrl.agents.ddpg import DDPG      
 from chainerrl.agents.ddpg import DDPGModel  
@@ -63,7 +63,7 @@ def random_action():
     return a
 
 
-def make_env(test,render=True):
+def make_env(test,render=False):
         
     env = ProstheticsEnv(visualize=render)
     env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
@@ -89,26 +89,36 @@ def graph_reward(reward, eps, saveas):
     plt.savefig(os.path.join('graphs',name))
     plt.close()
 
-def penalties(env):
+def penalties(env, tra_curr):
+    if tra_curr == 1:
+        target_v = 4
+    if tra_curr == 2:
+        target_v = 2
     state_desc = env.get_state_desc()
-    penalty = 0.
-    penalty += (state_desc["body_vel"]["pelvis"][0] - 3.0) ** 2
-    penalty += (state_desc["body_vel"]["pelvis"][2]) ** 2
+    penalty = 0
     penalty += np.sum(np.array(env.osim_model.get_activations()) ** 2) * 0.001
+    vel_penalty = ((state_desc["body_vel"]["pelvis"][0] - target_v)**2
+                       + (state_desc["body_vel"]["pelvis"][2] - 0)**2)
     if state_desc["body_pos"]["pelvis"][1] < 0.70: #falling
         penalty += 10  
+    if velocity(env) < tra_curr:
+        penalty += 10
+    
 
     return penalty
 
 def velocity(env):
-    state_desc = env.get_state_desc()
-    state_desc["body_vel"]["pelvis"] = 1000
+    cur_vel_x = state_desc['body_vel']['pelvis'][0]
+    cur_vel_z = state_desc['body_vel']['pelvis'][2]
+    cur_vel = (cur_vel_x**2 + cur_vel_z**2)**0.5
+    return cur_vel
+    
 
 # Set a random seed used in ChainerRL
 misc.set_random_seed(seed)
 
 # Setup the environment
-env = make_env(test=False,render=True)
+env = make_env(test=False,render=False)
 obs_size = np.asarray(env.observation_space.shape).prod()
 action_space = env.action_space
 action_size = np.asarray(action_space.shape).prod()
@@ -120,17 +130,35 @@ q_func = q_functions.FCSAQFunction(
             n_hidden_channels=args.critic_hidden_units,
             n_hidden_layers=args.critic_hidden_layers)
 
+# q_func = q_functions.FCLSTMSAQFunction(
+#             160, 
+#             action_size,
+#             n_hidden_channels=args.critic_hidden_units,
+#             n_hidden_layers=args.critic_hidden_layers)
+
+
 #q_func.to_gpu(0) #Poner en la GPU
 
 # Policy Network
-pi = policy.FCDeterministicPolicy(
+# pi = policy.FCDeterministicPolicy(
+#             160, 
+#             action_size=action_size,
+#             n_hidden_channels=args.actor_hidden_units,
+#             n_hidden_layers=args.actor_hidden_layers,
+#             min_action=action_space.low, 
+#             max_action=action_space.high,
+#             bound_action=True)
+
+pi = policy.FCBNDeterministicPolicy(
             160, 
             action_size=action_size,
             n_hidden_channels=args.actor_hidden_units,
             n_hidden_layers=args.actor_hidden_layers,
             min_action=action_space.low, 
             max_action=action_space.high,
-            bound_action=True)
+            bound_action=True,
+            normalize_input=True)
+
 
 # The Model
 model = DDPGModel(q_func=q_func, policy=pi)
@@ -166,18 +194,21 @@ best_reward=-1000
 for ep in range(1, args.num_episodes+ 1):
     
     obs = env.reset(project= True)
-    print("velicity")
-    print(obs)
+    state_desc = env.get_state_desc()
+    #print(state_desc)
+    #print("velocity")
     reward = 0
     done = False
     R = 0  # return (sum of rewards)
     t = 0  # time step
     episode_rewards=[]
     while not done and t < args.max_episode_length:
-        env.render()
+        #env.render()
         action = agent.act_and_train(obs, reward)
-        penalty = penalties(env) #Penalties calc
-        velocity(env)
+        if ep < 2000:
+            penalty = penalties(env, tra_curr= 1) #Penalties calc
+        if ep >= 2000:
+            penalty = penalties(env, tra_curr= 2) #Penalties calc
         reward -= penalty
         obs, reward, done, _ = env.step(action)
         R += reward
@@ -203,6 +234,9 @@ for ep in range(1, args.num_episodes+ 1):
             print("Mean Reward", total_reward_mean)
             # Statistics
             print('Statistics Alan:', agent.get_statistics())
+        
+        if ep % 10 == 0:
+            print(velocity(env))
      
     if episode_rewards_sum>best_reward:
         best_reward=episode_rewards_sum
