@@ -15,11 +15,14 @@ from gym import spaces
 import sys
 import os
 from arguments import parser, print_args
+import pdb
+
+cuda = True if torch.cuda.is_available() else False
 
 args = parser()
 print_args(args)
 
-# Ornstein-Ulhenbeck Process explorer
+# Ornstein-Ulhenbeck Process explorer to add noise to the action output
 # Taken from #https://github.com/vitchyr/rlkit/blob/master/rlkit/exploration_strategies/ou_strategy.py
 class OUNoise(object):
     def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.3, min_sigma=0.3, decay_period=100000):
@@ -64,6 +67,7 @@ class NormalizedEnv(gym.ActionWrapper):
         return act_k_inv * (action - act_b)
         
 
+#Experience replay buffer class
 class Memory:
     def __init__(self, max_size):
         self.max_size = max_size
@@ -95,7 +99,7 @@ class Memory:
     def __len__(self):
         return len(self.buffer)
 
-
+#Standard Actor-Critic Architecture
 class Critic(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(Critic, self).__init__()
@@ -144,7 +148,7 @@ class DDPGagent:
         self.gamma = gamma
         self.tau = tau
 
-        # Networks
+        # Network and target network initialization
         self.actor = Actor(self.num_states, hidden_size, self.num_actions)
         self.actor_target = Actor(self.num_states, hidden_size, self.num_actions)
         self.critic = Critic(self.num_states + self.num_actions, hidden_size, self.num_actions)
@@ -161,31 +165,46 @@ class DDPGagent:
         self.critic_criterion  = nn.MSELoss()
         self.actor_optimizer  = optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
+
+        if cuda:
+            self.actor.cuda()
+            self.actor_target.cuda()
+            self.critic.cuda()
+            self.critic_target.cuda()
+            self.critic_criterion.cuda()
     
     def get_action(self, state):
         state = Variable(torch.from_numpy(np.array(state)).float().unsqueeze(0))
+        if cuda:
+            state= state.cuda()
         action = self.actor.forward(state)
-        action = action.detach().numpy()[0,0]
+        action = action.detach().cpu().numpy()[0,0]
         return action
     
     def update(self, batch_size):
+        #pdb.set_trace()
         states, actions, rewards, next_states, _ = self.memory.sample(batch_size)
         states = torch.FloatTensor(states)
         actions = torch.FloatTensor(actions)
         rewards = torch.FloatTensor(rewards)
         next_states = torch.FloatTensor(next_states)
-    
+        if cuda:
+            states = states.cuda()
+            actions = actions.cuda()
+            rewards = rewards.cuda()
+            next_states = next_states.cuda()
+
         # Critic loss        
         Qvals = self.critic.forward(states, actions)
         next_actions = self.actor_target.forward(next_states)
         next_Q = self.critic_target.forward(next_states, next_actions.detach())
         Qprime = rewards + self.gamma * next_Q
-        critic_loss = self.critic_criterion(Qvals, Qprime)
+        critic_loss = self.critic_criterion(Qvals, Qprime) #MAximized MSE between original and updated Q values
 
-        # Actor loss
+        # Actor loss: mean of the sum of gradients calculated from mini-batch
         policy_loss = -self.critic.forward(states, self.actor.forward(states)).mean()
         
-        # update networks
+        # update networks with ADAM optimizer
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
         self.actor_optimizer.step()
@@ -194,7 +213,7 @@ class DDPGagent:
         critic_loss.backward() 
         self.critic_optimizer.step()
 
-        # update target networks 
+        # update target networks via soft updates (copy targetand make it track learned network)
         for target_param, param in zip(self.actor_target.parameters(), self.actor.parameters()):
             target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
        
@@ -246,20 +265,21 @@ def velocity(env):
     return cur_vel
     
 
-env = make_env(test=False,render=True)
+env = make_env(test=False,render=args.render_environment)
 #env = NormalizedEnv(env)
 obs_size = np.asarray(env.observation_space.shape).prod()
 #action_size = np.asarray(action_space.shape).prod()
 
 agent = DDPGagent(env)
 noise = OUNoise(env.action_space)
-batch_size = 128
+batch_size = args.minibatch_size
 rewards = []
 avg_rewards = []
 best_reward=-1000
 
+
 for episode in range(1, args.num_episodes+ 1):
-    state = env.reset(project= True)
+    state = env.reset(project=True)
     noise.reset()
     episode_reward = 0
     

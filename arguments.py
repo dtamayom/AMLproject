@@ -3,8 +3,9 @@ import argparse
 def parser():
     parser = argparse.ArgumentParser(description='Parameter Summary')
 
-    parser.add_argument('--num_episodes',default=3000,help='Number of episodes')
-    parser.add_argument('--max_episode_length',default=1000,help='Maximum episode length')
+    parser.add_argument('--num_episodes', default=3000,help='Number of episodes')
+    parser.add_argument('--max_episode_length', default=1000,help='Maximum episode length')
+    parser.add_argument('--render_environment', default=False, help='Show ALAN (or not)')
 
     parser.add_argument('--critic_lr', default=1e-3, help='Critic learning rate')
     parser.add_argument('--critic_hidden_layers', default=3, help='Critic Hidden Layers')
