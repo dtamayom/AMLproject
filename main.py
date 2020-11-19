@@ -10,7 +10,11 @@ from collections import deque
 import numpy as np
 import gym
 from osim.env import ProstheticsEnv
+import matplotlib
+matplotlib.use('Agg')   
 import matplotlib.pyplot as plt 
+from matplotlib import style
+style.use('ggplot')
 from gym import spaces 
 import sys
 import os
@@ -25,13 +29,13 @@ print_args(args)
 # Ornstein-Ulhenbeck Process explorer to add noise to the action output
 # Taken from #https://github.com/vitchyr/rlkit/blob/master/rlkit/exploration_strategies/ou_strategy.py
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.3, min_sigma=0.3, decay_period=100000):
-        self.mu           = mu
-        self.theta        = theta
-        self.sigma        = max_sigma
-        self.max_sigma    = max_sigma
-        self.min_sigma    = min_sigma
-        self.decay_period = decay_period
+    def __init__(self, action_space):
+        self.mu           = args.mu
+        self.theta        = args.theta
+        self.sigma        = args.max_sigma
+        self.max_sigma    = args.max_sigma
+        self.min_sigma    = args.min_sigma
+        self.decay_period = args.decay_period
         self.action_dim   = action_space.shape[0]
         self.low          = action_space.low
         self.high         = action_space.high
@@ -141,18 +145,24 @@ class Actor(nn.Module):
 
 
 class DDPGagent:
-    def __init__(self, env, hidden_size=256, actor_learning_rate=1e-4, critic_learning_rate=1e-3, gamma=0.99, tau=1e-2, max_memory_size=50000):
+    def __init__(self, env):
         # Params
         self.num_states = env.observation_space.shape[0]
         self.num_actions = env.action_space.shape[0]
-        self.gamma = gamma
-        self.tau = tau
+        self.gamma = args.gamma
+
+        #Params from args______________
+        self.hidden_size = args.hidden_size
+        self.actor_learning_rate = args.actor_lr
+        self.critic_learning_rate = args.critic_lr
+        self.tau = args.tau
+        #________________________________
 
         # Network and target network initialization
-        self.actor = Actor(self.num_states, hidden_size, self.num_actions)
-        self.actor_target = Actor(self.num_states, hidden_size, self.num_actions)
-        self.critic = Critic(self.num_states + self.num_actions, hidden_size, self.num_actions)
-        self.critic_target = Critic(self.num_states + self.num_actions, hidden_size, self.num_actions)
+        self.actor = Actor(self.num_states, self.hidden_size, self.num_actions)
+        self.actor_target = Actor(self.num_states, self.hidden_size, self.num_actions)
+        self.critic = Critic(self.num_states + self.num_actions, self.hidden_size, self.num_actions)
+        self.critic_target = Critic(self.num_states + self.num_actions, self.hidden_size, self.num_actions)
 
         for target_param, param in zip(self.actor_target.parameters(), self.actor.parameters()):
             target_param.data.copy_(param.data)
@@ -161,10 +171,10 @@ class DDPGagent:
             target_param.data.copy_(param.data)
         
         # Training
-        self.memory = Memory(max_memory_size)        
+        self.memory = Memory(args.max_memory)        
         self.critic_criterion  = nn.MSELoss()
-        self.actor_optimizer  = optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
+        self.actor_optimizer  = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
 
         if cuda:
             self.actor.cuda()
@@ -238,7 +248,7 @@ def graph_reward(reward, eps, saveas):
     plt.legend()
     plt.xlabel("Episode")
     plt.ylabel("Reward")
-    plt.savefig(os.path.join('graphs2',name))
+    plt.savefig(os.path.join(args.graphs_folder,name))
     plt.close()
 
 def penalties(env, tra_curr):
@@ -263,9 +273,35 @@ def velocity(env):
     cur_vel_z = state_desc['body_vel']['pelvis'][2]
     cur_vel = (cur_vel_x**2 + cur_vel_z**2)**0.5
     return cur_vel
+
+
+#Adapted from https://github.com/MoritzTaylor/ddpg-pytorch/blob/master/ddpg.py
+def save_checkpoint(self, last_timestep, replay_buffer):
+    """
+    Saving the networks and all parameters to a file in 'checkpoint_dir'
+    Arguments:
+        last_timestep:  Last timestep in training before saving
+        replay_buffer:  Current replay buffer
+    """
+    checkpoint_name = self.checkpoint_dir + '/ep_{}.pth.tar'.format(last_timestep)
+    logger.info('Saving checkpoint...')
+    checkpoint = {
+        'last_timestep': last_timestep,
+        'actor': self.actor.state_dict(),
+        'critic': self.critic.state_dict(),
+        'actor_target': self.actor_target.state_dict(),
+        'critic_target': self.critic_target.state_dict(),
+        'actor_optimizer': self.actor_optimizer.state_dict(),
+        'critic_optimizer': self.critic_optimizer.state_dict(),
+        'replay_buffer': replay_buffer,
+    }
+    logger.info('Saving model at timestep {}...'.format(last_timestep))
+    torch.save(checkpoint, checkpoint_name)
+    gc.collect()
+    logger.info('Saved model at timestep {} to {}'.format(last_timestep, self.checkpoint_dir))
     
 
-env = make_env(test=False,render=args.render_environment)
+env = make_env(test=args.mode_test,render=args.render_environment)
 #env = NormalizedEnv(env)
 obs_size = np.asarray(env.observation_space.shape).prod()
 #action_size = np.asarray(action_space.shape).prod()
@@ -276,7 +312,6 @@ batch_size = args.minibatch_size
 rewards = []
 avg_rewards = []
 best_reward=-1000
-
 
 for episode in range(1, args.num_episodes+ 1):
     state = env.reset(project=True)
@@ -316,7 +351,9 @@ for episode in range(1, args.num_episodes+ 1):
 
     #generate graph of rewards vs episodes
     if episode%50==0: 
-        graph_reward(rewards, episode, 'DDPGargs')    
+        if not os.path.exists(args.graphs_folder):
+           os.makedirs(args.graphs_folder)
+        graph_reward(rewards, episode, '_DDPGargs_')    
     
     
 print('Good job Alan')

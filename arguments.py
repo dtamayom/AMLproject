@@ -3,31 +3,29 @@ import argparse
 def parser():
     parser = argparse.ArgumentParser(description='Parameter Summary')
 
+    #General parameters
     parser.add_argument('--num_episodes', default=3000,help='Number of episodes')
-    parser.add_argument('--max_episode_length', default=1000,help='Maximum episode length')
     parser.add_argument('--render_environment', default=False, help='Show ALAN (or not)')
-
-    parser.add_argument('--critic_lr', default=1e-3, help='Critic learning rate')
-    parser.add_argument('--critic_hidden_layers', default=3, help='Critic Hidden Layers')
-    parser.add_argument('--critic_hidden_units', default=300, help='Critic Hidden Units')
-
-    parser.add_argument('--actor_lr', default=1e-4, help='Actor learning rate')
-    parser.add_argument('--actor_hidden_layers', default=3, help='Actor Hidden Layers')
-    parser.add_argument('--actor_hidden_units', default=300, help='Actor Hidden Units')
-
-    parser.add_argument('--gamma', default=0.995, help='Discount factor')
+    parser.add_argument('--checkpoint_dir', default='best_model', help='Location to save models')
+    parser.add_argument('--graphs_folder', default='prueba', help='Location to save resulting graphs')
+    parser.add_argument('--mode_test', default=False, help='Choose False to train, True to test')
     parser.add_argument('--minibatch_size', default=128, help='Batch size')
 
-    parser.add_argument('--replay_buffer_size', default=5 * 10 ** 5, help='the size of the replay buffer')
-    parser.add_argument('--replay_start_size', default=5000, help='the size of the replay buffer when the network starts the training step')
-    parser.add_argument('--number_of_update_times', default=1, help='Number of repetition of update')
+    #Ornstein-Ulhenbeck Process explorer parameters
+    parser.add_argument('--mu', default=0.0,help='mu')
+    parser.add_argument('--theta', default=0.15,help='theta')
+    parser.add_argument('--max_sigma', default=0.3,help='maximum sigma')
+    parser.add_argument('--min_sigma', default=0.3,help='minimum sigma')
+    parser.add_argument('--decay_period', default=100000,help='decay_period')
 
-    parser.add_argument('--target_update_interval', default=1, help='Target update interval in each step')
-    parser.add_argument('--target_update_method', default='soft', help='the type of update: hard or soft')
+    #DDPGagent
+    parser.add_argument('--hidden_size', default=256, help='Hidden size')
+    parser.add_argument('--actor_lr', default=1e-4, help='Actor learning rate')
+    parser.add_argument('--critic_lr', default=1e-3, help='Critic learning rate')
+    parser.add_argument('--gamma', default=0.99, help='Discount factor')
+    parser.add_argument('--tau', default=1e-2, help='The value of Tau in the soft target update')
+    parser.add_argument('--max_memory', default=50000, help='The value of Tau in the soft target update')
 
-    parser.add_argument('--soft_update_tau', default=1e-2, help='The value of Tau  in the soft target update')
-    parser.add_argument('--update_interval', default=4, help='Model update interval in each step')
-    parser.add_argument('--number_of_eval_runs', default=100)
     #Test
     parser.add_argument('--test_epochs', default=10)
 
