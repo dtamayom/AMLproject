@@ -6,7 +6,7 @@ def parser():
     #General parameters
     parser.add_argument('--num_episodes', default=3000,help='Number of episodes')
     parser.add_argument('--render_environment', default=False, help='Show ALAN (or not)')
-    parser.add_argument('--checkpoint_dir', default='best_model', help='Location to save models')
+    parser.add_argument('--checkpoint_dir', default='./saved_model/', help='Location to save models')
     parser.add_argument('--graphs_folder', default='prueba', help='Location to save resulting graphs')
     parser.add_argument('--mode_test', default=False, help='Choose False to train, True to test')
     parser.add_argument('--minibatch_size', default=128, help='Batch size')

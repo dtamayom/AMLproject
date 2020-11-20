@@ -1,6 +1,7 @@
 ##Codigo tomado de https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b
 import torch.nn as nn
 import torch
+import gc
 import torch.nn.functional as F
 import torch.autograd
 import torch.optim as optim
@@ -203,7 +204,7 @@ class DDPGagent:
             actions = actions.cuda()
             rewards = rewards.cuda()
             next_states = next_states.cuda()
-
+    
         # Critic loss        
         Qvals = self.critic.forward(states, actions)
         next_actions = self.actor_target.forward(next_states)
@@ -229,6 +230,32 @@ class DDPGagent:
        
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(param.data * self.tau + target_param.data * (1.0 - self.tau))
+        
+     #Adapted from https://github.com/MoritzTaylor/ddpg-pytorch/blob/master/ddpg.py
+    def save_checkpoint(self, last_timestep):
+        """
+        Saving the networks and all parameters to a file in 'checkpoint_dir'
+        Arguments:
+            last_timestep:  Last timestep in training before saving
+            replay_buffer:  Current replay buffer
+        """
+        checkpoint_name = args.checkpoint_dir + '/ep_{}.pth.tar'.format(last_timestep)
+        #logger.info('Saving checkpoint...')
+        checkpoint = {
+            'last_timestep': last_timestep,
+            'actor': self.actor.state_dict(),
+            'critic': self.critic.state_dict(),
+            'actor_target': self.actor_target.state_dict(),
+            'critic_target': self.critic_target.state_dict(),
+            'actor_optimizer': self.actor_optimizer.state_dict(),
+            'critic_optimizer': self.critic_optimizer.state_dict(),
+            'replay_buffer': self.memory,
+        }
+        #logger.info('Saving model at timestep {}...'.format(last_timestep))
+        torch.save(checkpoint, checkpoint_name)
+        gc.collect()
+        #logger.info('Saved model at timestep {} to {}'.format(last_timestep, self.checkpoint_dir))
+
 
 
 def make_env(test,render):
@@ -273,32 +300,6 @@ def velocity(env):
     cur_vel_z = state_desc['body_vel']['pelvis'][2]
     cur_vel = (cur_vel_x**2 + cur_vel_z**2)**0.5
     return cur_vel
-
-
-#Adapted from https://github.com/MoritzTaylor/ddpg-pytorch/blob/master/ddpg.py
-def save_checkpoint(self, last_timestep, replay_buffer):
-    """
-    Saving the networks and all parameters to a file in 'checkpoint_dir'
-    Arguments:
-        last_timestep:  Last timestep in training before saving
-        replay_buffer:  Current replay buffer
-    """
-    checkpoint_name = self.checkpoint_dir + '/ep_{}.pth.tar'.format(last_timestep)
-    logger.info('Saving checkpoint...')
-    checkpoint = {
-        'last_timestep': last_timestep,
-        'actor': self.actor.state_dict(),
-        'critic': self.critic.state_dict(),
-        'actor_target': self.actor_target.state_dict(),
-        'critic_target': self.critic_target.state_dict(),
-        'actor_optimizer': self.actor_optimizer.state_dict(),
-        'critic_optimizer': self.critic_optimizer.state_dict(),
-        'replay_buffer': replay_buffer,
-    }
-    logger.info('Saving model at timestep {}...'.format(last_timestep))
-    torch.save(checkpoint, checkpoint_name)
-    gc.collect()
-    logger.info('Saved model at timestep {} to {}'.format(last_timestep, self.checkpoint_dir))
     
 
 env = make_env(test=args.mode_test,render=args.render_environment)
@@ -346,8 +347,10 @@ for episode in range(1, args.num_episodes+ 1):
         print('new best', episode)
 
     # Save the model every 100 episode.
-    #if episode%100==0:
-        #agent.save("DDPG_last_model2")
+    if episode%100==0:
+        if not os.path.exists(args.checkpoint_dir):
+           os.makedirs(args.checkpoint_dir)
+        agent.save_checkpoint(episode)
 
     #generate graph of rewards vs episodes
     if episode%50==0: 
