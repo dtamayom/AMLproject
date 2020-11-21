@@ -300,6 +300,39 @@ def velocity(env):
     cur_vel_z = state_desc['body_vel']['pelvis'][2]
     cur_vel = (cur_vel_x**2 + cur_vel_z**2)**0.5
     return cur_vel
+
+def shape_rew(env):
+        state_desc = env.get_state_desc()
+        prev_state_desc = env.get_prev_state_desc()
+        if not prev_state_desc:
+            return 0
+        penalty = 0.
+        penalty += (state_desc["body_vel"]["pelvis"][0] - 3.0) ** 2
+        penalty += (state_desc["body_vel"]["pelvis"][2]) ** 2
+        penalty += np.sum(np.array(env.osim_model.get_activations()) ** 2) * 0.001
+        if state_desc["body_pos"]["pelvis"][1] < 0.70:
+            penalty += 10  # penalize falling more
+
+        # Reward for not falling
+        reward = 10.0
+
+        return reward - penalty
+
+
+def step_jor(env, action):
+        reward = 0.
+        for _ in range(500):
+            env.prev_state_desc = env.get_state_desc()
+            env.osim_model.actuate(action)
+            env.osim_model.integrate()
+            done = env.is_done()
+            rewards = shape_rew(env)
+            if done:
+                break
+
+        obs = env.get_state_desc()
+
+        return obs, rewards, done, {'r': reward}
     
 
 env = make_env(test=args.mode_test,render=args.render_environment)
@@ -322,7 +355,7 @@ for episode in range(1, args.num_episodes+ 1):
     for step in range(500):
         action = agent.get_action(state)
         action = noise.get_action(action, step)
-        new_state, reward, done, _ = env.step(action) 
+        new_state, reward, done, _ = step_jor(env, action)#env.step(action) 
         agent.memory.push(state, action, reward, new_state, done)
         
         if len(agent.memory) > batch_size:
