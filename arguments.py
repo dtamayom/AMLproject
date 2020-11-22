@@ -4,10 +4,10 @@ def parser():
     parser = argparse.ArgumentParser(description='Parameter Summary')
 
     #General parameters
-    parser.add_argument('--num_episodes', default=3000,help='Number of episodes')
+    parser.add_argument('--num_episodes', default=5,help='Number of episodes')
     parser.add_argument('--render_environment', default=False, help='Show ALAN (or not)')
     parser.add_argument('--checkpoint_dir', default='./saved_model/', help='Location to save models')
-    parser.add_argument('--graphs_folder', default='graphs', help='Location to save resulting graphs')
+    parser.add_argument('--graphs_folder', default='graphs_prueba', help='Location to save resulting graphs')
     parser.add_argument('--mode_test', default=False, help='Choose False to train, True to test')
     parser.add_argument('--minibatch_size', default=300, help='Batch size')
 
@@ -27,7 +27,7 @@ def parser():
     parser.add_argument('--max_memory', default=50000, help='The value of Tau in the soft target update')
 
     #Test
-    parser.add_argument('--test_epochs', default=10)
+    parser.add_argument('--test_episodes', default=10)
 
     # eval_interval=10 ** 5
     # final_exploration_steps=10 ** 6       
