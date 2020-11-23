@@ -7,8 +7,10 @@ import torch
 args = parser()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-env = ProstheticsEnv(visualize=True)
-env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
+env = make_env(args.mode_test,args.render_environment):
+#env = ProstheticsEnv(visualize=True)
+#env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
+
 # phi = lambda x: np.array(x).astype(np.float32, copy=False)
 # obs_size = np.asarray(env.observation_space.shape).prod()
 # action_space = env.action_space
