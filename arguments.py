@@ -4,12 +4,13 @@ def parser():
     parser = argparse.ArgumentParser(description='Parameter Summary')
 
     #General parameters
-    parser.add_argument('--num_episodes', default=3000,help='Number of episodes')
+    parser.add_argument('--num_episodes', default=20000,help='Number of episodes')
     parser.add_argument('--render_environment', default=False, help='Show ALAN (or not)')
-    parser.add_argument('--checkpoint_dir', default='./saved_model2/', help='Location to save models')
-    parser.add_argument('--graphs_folder', default='graphs_prueba', help='Location to save resulting graphs')
+    parser.add_argument('--checkpoint_dir', default='./saved_model_bueno/', help='Location to save models')
+    parser.add_argument('--graphs_folder', default='graphs_bueno', help='Location to save resulting graphs')
     parser.add_argument('--mode_test', default=False, help='Choose False to train, True to test')
-    parser.add_argument('--minibatch_size', default=500, help='Batch size')
+    parser.add_argument('--minibatch_size', default=1500, help='Batch size')
+    parser.add_argument('--num_steps', default=1000, help='Number of step sizes')
 
     #Ornstein-Ulhenbeck Process explorer parameters
     parser.add_argument('--mu', default=0.0,help='mu')
