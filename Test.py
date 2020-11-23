@@ -58,7 +58,8 @@ env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
 
 # Cargar el modelo guardado
 agent = DDPGagent(env)
-agent.load_checkpoint("ep_best-pth.tar")
+noise = OUNoise(env.action_space)
+agent.load_checkpoint("ep_best.pth.tar")
 
 for i in range(args.test_episodes):
     obs = env.reset()
@@ -74,10 +75,10 @@ for i in range(args.test_episodes):
         # t += 1
 
         action = agent.get_action(state)
-        #action = noise.get_action(action, step)
-        new_state, reward, done, _ = step_jor(env, action)#env.step(action) 
-        state = torch.Tensor([new_state]).to(device)
-        reward_Alan += r
+        action = noise.get_action(action, i)
+        new_state, reward, done, _ = env.step(action)#step_jor(env, action)# 
+        #state = torch.Tensor([new_state]).to(device)
+        reward_Alan += reward
         t += 1
     print('Test episode:', i, 'Reward obtained: ', reward_Alan)
-    agent.stop_episode()
+    #agent.stop_episode()

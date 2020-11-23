@@ -49,9 +49,9 @@ for episode in range(1, args.num_episodes+ 1):
     for step in range(500):
         action = agent.get_action(state)
         action = noise.get_action(action, step)
-        new_state, reward, done, _ = step_jor(env, action)#env.step(action) 
+        new_state, reward, done, _ = env.step(action)#env.step(action) 
+        reward = shape_rew(env)
         agent.memory.push(state, action, reward, new_state, done)
-        
         if len(agent.memory) > batch_size:
             agent.update(batch_size)        
         
@@ -65,7 +65,7 @@ for episode in range(1, args.num_episodes+ 1):
     rewards.append(episode_reward)
     avg_rewards.append(np.mean(rewards[-10:]))
     
-    if episode%2==0:
+    if episode%10==0:
         print('Velocity: ', velocity(env))
 
     if episode_reward>best_reward:

@@ -24,6 +24,10 @@ import pdb
 
 cuda = True if torch.cuda.is_available() else False
 
+args = parser()
+print_args(args)
+
+
 # Ornstein-Ulhenbeck Process explorer to add noise to the action output
 # Taken from #https://github.com/vitchyr/rlkit/blob/master/rlkit/exploration_strategies/ou_strategy.py
 class OUNoise(object):
@@ -265,7 +269,7 @@ class DDPGagent:
             print('Loading checkpoint...')
             key = 'cuda' if torch.cuda.is_available() else 'cpu'
             checkpoint = torch.load(checkpoint_path, map_location=key)
-            start_timestep = checkpoint['last_timestep'] + 1
+            start_timestep = checkpoint['last_timestep'] #+ 1
             self.actor.load_state_dict(checkpoint['actor'])
             self.critic.load_state_dict(checkpoint['critic'])
             self.actor_target.load_state_dict(checkpoint['actor_target'])
@@ -344,20 +348,20 @@ def velocity(env):
 #         return reward - penalty
 
 
-# def step_jor(env, action):
-#         reward = 0.
-#         for _ in range(500):
-#             env.prev_state_desc = env.get_state_desc()
-#             env.osim_model.actuate(action)
-#             env.osim_model.integrate()
-#             done = env.is_done()
-#             rewards = shape_rew(env)
-#             if done:
-#                 break
+def step_jor(env, action):
+        reward = 0.
+        for _ in range(500):
+            env.prev_state_desc = env.get_state_desc()
+            env.osim_model.actuate(action)
+            env.osim_model.integrate()
+            done = env.is_done()
+            rewards = shape_rew(env)
+            if done:
+                break
 
-#         obs = env.get_state_desc()
+        obs = env.get_state_desc()
 
-#         return obs, rewards, done, {'r': reward}
+        return obs, rewards, done, {'r': reward}
 
 def shape_rew(env):
         state_desc = env.get_state_desc()
@@ -387,33 +391,33 @@ def get_observation(env):
         state_desc = env.get_state_desc()
         return project_obs(state_desc, proj=self.project_mode, prosthetic=self.prosthetic)
 
-def step_jor(env, action):
-        reward = 0.
-        rewardb = 0
-        for _ in range(500):
-            env.prev_state_desc = env.get_state_desc()
-            start_time = time.perf_counter()
-            env.osim_model.actuate(action)
-            env.osim_model.integrate()
-            step_time = time.perf_counter() - start_time
-            done = env.is_done()
+# def step_jor(env, action):
+#         reward = 0.
+#         rewardb = 0
+#         for _ in range(500):
+#             env.prev_state_desc = env.get_state_desc()
+#             start_time = time.perf_counter()
+#             env.osim_model.actuate(action)
+#             env.osim_model.integrate()
+#             step_time = time.perf_counter() - start_time
+#             done = env.is_done()
 
-            if step_time > 15.:
-                reward += -10
-                done = True
-            else:
-                reward += shape_rew(env)
-            rewardb += reward_first(env)
-            #rewards = shape_rew(env)
-            if done:
-                break
-        print(reward)
-        print(rewardb)
+#             if step_time > 15.:
+#                 reward += -10
+#                 done = True
+#             else:
+#                 reward += shape_rew(env)
+#             rewardb += reward_first(env)
+#             #rewards = shape_rew(env)
+#             if done:
+#                 break
+#         print(reward)
+#         print(rewardb)
 
-        #obs = env.get_state_desc()
-        obs = env.get_observation()
+#         #obs = env.get_state_desc()
+#         obs = env.get_observation()
 
-        #print(obs)
+#         #print(obs)
 
-        return obs, reward, done, {'r': reward}
+#         return obs, reward, done, {'r': reward}
     
