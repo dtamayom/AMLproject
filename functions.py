@@ -193,8 +193,7 @@ class DDPGagent:
         action = action.detach().cpu().numpy()[0,0]
         return action
     
-    def update(self, batch_size):
-        #pdb.set_trace()
+    def update(self, batch_size, env):
         states, actions, rewards, next_states, _ = self.memory.sample(batch_size)
         states = torch.FloatTensor(states)
         actions = torch.FloatTensor(actions)
@@ -211,19 +210,32 @@ class DDPGagent:
         next_actions = self.actor_target.forward(next_states)
         next_Q = self.critic_target.forward(next_states, next_actions.detach())
         Qprime = rewards + self.gamma * next_Q
-        critic_loss = self.critic_criterion(Qvals, Qprime) #MAximized MSE between original and updated Q values
+        critic_loss = self.critic_criterion(Qvals, Qprime) #MAximized MSE between original and updated Q values)
 
         # Actor loss: mean of the sum of gradients calculated from mini-batch
         policy_loss = -self.critic.forward(states, self.actor.forward(states)).mean()
-        
+
+        # Velocity loss
+        #velocity_loss = self.critic_criterion(velocity(env), v_obj)
+        #pdb.set_trace()
+        if args.use_v_obj:
+            loss = nn.MSELoss()
+            velocity_loss = loss(torch.as_tensor(velocity(env)), torch.as_tensor(args.v_obj))
+            velocity_loss.requires_grad = True
+            
         # update networks with ADAM optimizer
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
         self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
-        critic_loss.backward() 
+        critic_loss.backward()  
         self.critic_optimizer.step()
+
+        if args.use_v_obj:
+            self.critic_optimizer.zero_grad()
+            velocity_loss.backward() 
+            self.critic_optimizer.step()
 
         # update target networks via soft updates (copy targetand make it track learned network)
         for target_param, param in zip(self.actor_target.parameters(), self.actor.parameters()):
@@ -296,14 +308,16 @@ def make_env(test,render):
     env.seed(env_seed)
     return env
 
-def graph_reward(reward, eps, saveas):
+
+def graph_reward(reward, eps, avg_reward, saveas):
     name = saveas + str(eps) + '.png'
     episodes = np.linspace(0,eps,eps)
     plt.figure()
-    plt.plot(episodes, reward,'cadetblue',label='DDPG')
-    plt.legend()
-    plt.xlabel("Episode")
+    plt.plot(episodes, reward,'cadetblue',label='Standard')
+    plt.xlabel("Number of Episodes")
     plt.ylabel("Reward")
+    plt.plot(avg_reward, color='darkgoldenrod', label='Average')
+    plt.legend()
     plt.savefig(os.path.join(args.graphs_folder,name))
     plt.close()
 
@@ -421,3 +435,120 @@ def get_observation(env):
 
 #         return obs, reward, done, {'r': reward}
     
+
+# def reset(self):
+# self.time_step = 0
+
+# if self.episodes % self.ep2reload == 0:
+#     self.env = ProstheticsEnv(
+#         visualize=self.visualize, integrator_accuracy=1e-3)
+#     self.env.change_model(
+#         model=self.model, prosthetic=True, difficulty=0,
+#         seed=np.random.randint(200))
+
+# state_desc = self.env.reset(project=False)
+# if self.randomized_start:
+#     state = get_simbody_state(state_desc)
+#     noise = np.random.normal(scale=0.1, size=72)
+#     noise[3:6] = 0
+#     state = (np.array(state) + noise).tolist()
+#     simbody_state = self.env.osim_model.get_state()
+#     obj = simbody_state.getY()
+#     for i in range(72):
+#         obj[i] = state[i]
+#     self.env.osim_model.set_state(simbody_state)
+
+# observation = preprocess_obs(state_desc)
+# if self.observe_time:
+#     observation.append(-1.0)
+
+# return observation
+
+def is_done(env, observation, time_step, frame_skip):
+    max_episode_length=args.num_steps
+    pelvis_y = observation["body_pos"]["pelvis"][1]
+    if time_step * frame_skip > max_ep_length:
+        return True
+    elif pelvis_y < 0.6:
+        return True
+    return False
+
+def shape_reward_s(env, reward, time_step, frame_skip):
+    state_desc = env.get_state_desc()
+    max_ep_length=args.num_steps
+    death_penalty=0.0
+    living_bonus=0.1
+    side_dev_coef=0.1
+    cross_legs_coef=0.1
+    bending_knees_coef = 0.1
+    side_step_penalty = False
+    # death penalty
+    if time_step * frame_skip < max_ep_length:
+        reward -= death_penalty
+    else:
+        reward += living_bonus
+
+    # deviation from forward direction penalty
+    vy, vz = state_desc['body_vel']['pelvis'][1:]
+    side_dev_penalty = (vy ** 2 + vz ** 2)
+    reward -= side_dev_coef * side_dev_penalty
+
+    # crossing legs penalty
+    pelvis_xy = np.array(state_desc['body_pos']['pelvis'])
+    left = np.array(state_desc['body_pos']['toes_l']) - pelvis_xy
+    right = np.array(state_desc['body_pos']['pros_foot_r']) - pelvis_xy
+    axis = np.array(state_desc['body_pos']['head']) - pelvis_xy
+    cross_legs_penalty = np.cross(left, right).dot(axis)
+    if cross_legs_penalty > 0:
+        cross_legs_penalty = 0.0
+    reward += cross_legs_coef * cross_legs_penalty
+
+    # bending knees bonus
+    r_knee_flexion = np.minimum(state_desc['joint_pos']['knee_r'][0], 0.)
+    l_knee_flexion = np.minimum(state_desc['joint_pos']['knee_l'][0], 0.)
+    bend_knees_bonus = np.abs(r_knee_flexion + l_knee_flexion)
+    reward += bending_knees_coef * bend_knees_bonus
+
+    # side step penalty
+    #if side_step_penalty:
+        #rx, ry, rz = state_desc['body_pos_rot']['pelvis']
+        #R = euler_angles_to_rotation_matrix([rx, ry, rz])
+        #reward *= (1.0 - math.fabs(R[2, 0]))
+
+    return reward
+
+def step_s(env, action):
+    reward = 0
+    reward_origin = 0
+    reward_scale=0.1
+    frame_skip=1
+    time_step = 0
+
+    #action = lambda x: x
+    action = np.clip(action, 0.0, 1.0)
+
+    for i in range(frame_skip):
+        observation, r, _, info = env.step(action)
+        reward_origin += r
+        done = env.is_done()
+        #reward += shape_reward_s(env, r, time_step, frame_skip)
+        reward += shape_rew(env)
+        if done:
+            break
+
+    observation = env.get_observation()
+    reward *= reward_scale
+    info["reward_origin"] = reward_origin
+    time_step += 1
+
+    return observation, reward, done, info
+
+# def is_done(env, observation):
+#     pelvis_y = observation["body_pos"]["pelvis"][1]
+#     if time_step * frame_skip > max_ep_length:
+#         return True
+#     elif pelvis_y < 0.6:
+#         return True
+#     return False
+
+
