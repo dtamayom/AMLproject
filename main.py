@@ -22,6 +22,8 @@ import os
 from arguments import parser, print_args
 import pdb
 from functions import OUNoise, NormalizedEnv, Memory, Critic, Actor, DDPGagent, make_env, graph_reward, penalties, velocity, shape_rew, step_jor, reward_first, get_observation, shape_reward_s, step_s
+from functions import MyProstheticsEnv
+import time
 
 cuda = True if torch.cuda.is_available() else False
 
@@ -29,7 +31,9 @@ args = parser()
 print_args(args)
 
 
-env = make_env(test=args.mode_test,render=args.render_environment)
+#env = make_env(test=args.mode_test,render=args.render_environment)
+env = MyProstheticsEnv(integrator_accuracy=1e-4)
+env.seed()
 #env = NormalizedEnv(env)
 obs_size = np.asarray(env.observation_space.shape).prod()
 #action_size = np.asarray(action_space.shape).prod()
@@ -42,18 +46,19 @@ avg_rewards = []
 best_reward=-1000
 
 for episode in range(1, args.num_episodes+ 1):
-    state = env.reset(project=True)
+    state = env.reset() #project=True
     noise.reset()
     episode_reward = 0
     
-    for step in range(1000):
+    for step in range(args.num_steps):
+        #print(len(state)) #160 env normal, 181 MyEnv
         action = agent.get_action(state)
         action = noise.get_action(action, step)
         # new_state, reward, done, _ = env.step(action)
         # new_state, reward, done, _ = step_s(env, action)
         # reward = shape_rew(env)
         new_state, reward, done, _ = env.step(action)
-        reward = shape_rew(env)
+        #reward = shape_rew(env)
         agent.memory.push(state, action, reward, new_state, done)
         if len(agent.memory) > batch_size:
             agent.update(batch_size, env)        
@@ -68,7 +73,7 @@ for episode in range(1, args.num_episodes+ 1):
     rewards.append(episode_reward)
     avg_rewards.append(np.mean(rewards[-10:]))
     
-    if episode%10==0:
+    if episode%100==0:
         print('Velocity: ', velocity(env))
 
     if episode_reward>best_reward:
@@ -77,6 +82,7 @@ for episode in range(1, args.num_episodes+ 1):
            os.makedirs(args.checkpoint_dir)
         agent.save_checkpoint("best")
         print('new best', episode)
+    print('Max reward: ', best_reward)
 
     # Save the model every 100 episode.
     if episode%100==0:
@@ -85,7 +91,7 @@ for episode in range(1, args.num_episodes+ 1):
         agent.save_checkpoint(episode)
 
     #generate graph of rewards vs episodes
-    if episode%500==0: 
+    if episode%200==0: 
         if not os.path.exists(args.graphs_folder):
            os.makedirs(args.graphs_folder)
         graph_reward(rewards, episode, avg_rewards, '_DDPGargs_')    
