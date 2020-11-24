@@ -21,7 +21,7 @@ import sys
 import os
 from arguments import parser, print_args
 import pdb
-from functions import OUNoise, NormalizedEnv, Memory, Critic, Actor, DDPGagent, make_env, graph_reward, penalties, velocity, shape_rew, step_jor, reward_first, get_observation
+from functions import OUNoise, NormalizedEnv, Memory, Critic, Actor, DDPGagent, make_env, graph_reward, penalties, velocity, shape_rew, step_jor, reward_first, get_observation, shape_reward_s, step_s
 
 cuda = True if torch.cuda.is_available() else False
 
@@ -46,14 +46,17 @@ for episode in range(1, args.num_episodes+ 1):
     noise.reset()
     episode_reward = 0
     
-    for step in range(500):
+    for step in range(1000):
         action = agent.get_action(state)
         action = noise.get_action(action, step)
-        new_state, reward, done, _ = env.step(action)#env.step(action) 
+        # new_state, reward, done, _ = env.step(action)
+        # new_state, reward, done, _ = step_s(env, action)
+        # reward = shape_rew(env)
+        new_state, reward, done, _ = env.step(action)
         reward = shape_rew(env)
         agent.memory.push(state, action, reward, new_state, done)
         if len(agent.memory) > batch_size:
-            agent.update(batch_size)        
+            agent.update(batch_size, env)        
         
         state = new_state
         episode_reward += reward
@@ -82,20 +85,21 @@ for episode in range(1, args.num_episodes+ 1):
         agent.save_checkpoint(episode)
 
     #generate graph of rewards vs episodes
-    if episode%50==0: 
+    if episode%500==0: 
         if not os.path.exists(args.graphs_folder):
            os.makedirs(args.graphs_folder)
-        graph_reward(rewards, episode, '_DDPGargs_')    
-    
+        graph_reward(rewards, episode, avg_rewards, '_DDPGargs_')    
+
+        # plt.plot(rewards, color='cadetblue')
+        # plt.ylabel('Returns')
+        # plt.xlabel('Number of episodes')
+        # plt.savefig(os.path.join(args.graphs_folder,"Episodes_VS_Returns.png"))
+
+        # plt.plot(avg_rewards, color='darkgoldenrod')
+        # plt.ylabel('Average of Returns ')
+        # plt.xlabel('Number of episodes')
+        # plt.savefig(os.path.join(args.graphs_folder,"AverageEpisodes_VS_Returns.png"))
     
 print('Good job Alan')
 
-plt.plot(rewards, color='cadetblue')
-plt.ylabel('Returns')
-plt.xlabel('Number of episodes')
-plt.savefig(os.path.join(args.graphs_folder,"Episodes_VS_Returns.png"))
 
-plt.plot(avg_rewards, color='darkgoldenrod')
-plt.ylabel('Average of Returns ')
-plt.xlabel('Number of episodes')
-plt.savefig(os.path.join(args.graphs_folder,"AverageEpisodes_VS_Returns.png"))
