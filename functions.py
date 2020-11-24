@@ -300,7 +300,7 @@ class DDPGagent:
 
 
 def make_env(test,render):
-    seed=0
+    seed=np.random.seed()
     env = ProstheticsEnv(visualize=render)
     env.change_model(model='3D', prosthetic=True, difficulty=0, seed=None)
     # Use different random seeds for train and test envs
