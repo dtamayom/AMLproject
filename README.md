@@ -18,11 +18,12 @@ $ pip install matplotlib
 The environment used is taken from the [NeurIPS 2018 Challenge: Learning to Run](https://github.com/stanfordnmbl/osim-rl) 
 
 ## Running the code
+Make sure to check the arguments.py file. 
 ### To train
 ```
-$ python train.py --config CONFIGFILE_NAME --gpu-id GPUID
+$ CUDA_VISIBLE_DEVICES=0 python main.py
 ```
 ### To evaluate
 ```
-$ python eval.py --config CONFIGFILE --gpu-id GPUID
+$ python Test.py
 ```
