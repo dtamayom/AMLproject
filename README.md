@@ -18,7 +18,7 @@ $ pip install matplotlib
 The environment used is taken from the [NeurIPS 2018 Challenge: Learning to Run](https://github.com/stanfordnmbl/osim-rl) which is modified with a prosthetic leg for the purpose of this project.
 
 ## Running the code
-Make sure to check the arguments.py file. In the arguments 'graphs_folder' and 'checkpoint_dir' choose a name for the folder to save you experiment. 
+Make sure to check the arguments.py file. In the arguments `graphs_folder` and `checkpoint_dir` choose a name for the folder to save you experiment. 
 ### To train
 ```
 $ CUDA_VISIBLE_DEVICES=0 python main.py --render_environment=False --mode_test=False 
