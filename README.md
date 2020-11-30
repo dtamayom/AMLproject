@@ -15,13 +15,13 @@ $ pip install git+https://github.com/stanfordnmbl/osim-rl.git@ver2.1
 $ pip install matplotlib
 ```
 ## Environment
-The environment used is taken from the [NeurIPS 2018 Challenge: Learning to Run](https://github.com/stanfordnmbl/osim-rl) 
+The environment used is taken from the [NeurIPS 2018 Challenge: Learning to Run](https://github.com/stanfordnmbl/osim-rl) which is modified with a prosthetic leg for the purpose of this project.
 
 ## Running the code
 Make sure to check the arguments.py file. 
 ### To train
 ```
-$ CUDA_VISIBLE_DEVICES=0 python main.py
+$ CUDA_VISIBLE_DEVICES=0 python main.py 
 ```
 ### To evaluate
 ```
