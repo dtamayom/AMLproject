@@ -5,14 +5,14 @@ def parser():
 
     #General parameters
     parser.add_argument('--num_episodes', default=20000,help='Number of episodes')
-    parser.add_argument('--render_environment', default=False, help='Show ALAN (or not)')
-    parser.add_argument('--checkpoint_dir', default='./saved_model/', help='Location to save models')
-    parser.add_argument('--graphs_folder', default='graphs_model', help='Location to save resulting graphs')
-    parser.add_argument('--mode_test', default=False, help='Choose False to train, True to test')
-    parser.add_argument('--minibatch_size', default=300, help='Batch size')
+    parser.add_argument('--render_environment', default=True, help='Show ALAN (or not)')
+    parser.add_argument('--checkpoint_dir', default='./final_model/', help='Location to save models')
+    parser.add_argument('--graphs_folder', default='graphs_final', help='Location to save resulting graphs')
+    parser.add_argument('--mode_test', default=True, help='Choose False to train, True to test')
+    parser.add_argument('--minibatch_size', default=200, help='Batch size')
     parser.add_argument('--num_steps', default=1000, help='Number of step sizes')
     parser.add_argument('--v_obj', default=3, help='Target vel to calculate loss')
-    parser.add_argument('--use_v_obj', default=True, help='Target vel or not')
+    parser.add_argument('--use_v_obj', default=False, help='Target vel or not')
 
     #Ornstein-Ulhenbeck Process explorer parameters
     parser.add_argument('--mu', default=0.0,help='mu')
@@ -30,7 +30,7 @@ def parser():
     parser.add_argument('--max_memory', default=50000, help='The value of Tau in the soft target update')
 
     #Test
-    parser.add_argument('--test_episodes', default=10)
+    parser.add_argument('--test_episodes', default=15)
 
     # eval_interval=10 ** 5
     # final_exploration_steps=10 ** 6       
