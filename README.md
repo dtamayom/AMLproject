@@ -1,5 +1,5 @@
-# AMLproject
-Advanced Machine Learning Project Proposal. 
+# Understanding motion kinematics using prosthetic devices after lower limb amputation through AI-engineered model
+Advanced Machine Learning Project. 
 Catalina Botía, Isabella Ramos, Daniela Tamayo. 
 
 Universidad de los Andes, 2020
@@ -18,10 +18,10 @@ $ pip install matplotlib
 The environment used is taken from the [NeurIPS 2018 Challenge: Learning to Run](https://github.com/stanfordnmbl/osim-rl) which is modified with a prosthetic leg for the purpose of this project.
 
 ## Running the code
-Make sure to check the arguments.py file. 
+Make sure to check the arguments.py file. In the arguments 'graphs_folder' and 'checkpoint_dir' choose a name for the folder to save you experiment. 
 ### To train
 ```
-$ CUDA_VISIBLE_DEVICES=0 python main.py 
+$ CUDA_VISIBLE_DEVICES=0 python main.py --render_environment=False --mode_test=False 
 ```
 ### To evaluate
 ```
