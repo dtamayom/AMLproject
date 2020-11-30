@@ -43,7 +43,7 @@ noise = OUNoise(env.action_space)
 batch_size = args.minibatch_size
 rewards = []
 avg_rewards = []
-best_reward=-1000
+best_reward=-10000
 
 for episode in range(1, args.num_episodes+ 1):
     state = env.reset() #project=True
@@ -58,6 +58,7 @@ for episode in range(1, args.num_episodes+ 1):
         # new_state, reward, done, _ = step_s(env, action)
         # reward = shape_rew(env)
         new_state, reward, done, _ = env.step(action)
+        #reward = env.shape_reward_s(reward)
         #reward = shape_rew(env)
         agent.memory.push(state, action, reward, new_state, done)
         if len(agent.memory) > batch_size:
