@@ -11,7 +11,7 @@ args = parser()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #env = make_env(args.mode_test, args.render_environment)
 env = MyProstheticsEnv(integrator_accuracy=1e-4)
-nv.seed=2 ** 32 - 1
+env.seed=2 ** 32 - 1
 
 agent = DDPGagent(env)
 noise = OUNoise(env.action_space)
