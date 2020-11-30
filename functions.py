@@ -769,14 +769,14 @@ class MyProstheticsEnv(ProstheticsEnv):
         reward += bending_knees_coef * bend_knees_bonus
 
         #torso/back fallling penalty
-        back_velocity = np.min(state_desc['body_vel']['torso'])
-        if back_velocity < 0:
-            reward += back_falling_coef * back_velocity
+        #back_velocity = np.min(state_desc['body_vel']['torso'])
+        #if back_velocity < 0:
+        #    reward += back_falling_coef * back_velocity
 
         #not moving penalty
-        cm_vel = np.min(state_desc["misc"]["mass_center_vel"])**2
-        if cm_vel < 1:
-            reward -= not_moving_penalty
+        #cm_vel = np.min(state_desc["misc"]["mass_center_vel"])**2
+        #if cm_vel < 1:
+        #    reward -= not_moving_penalty
 
         # side step penalty
         #if side_step_penalty:
