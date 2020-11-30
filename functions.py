@@ -1,4 +1,4 @@
-##Codigo tomado de https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b
+##Adapted from https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b
 import torch.nn as nn
 import torch
 import gc
@@ -30,7 +30,7 @@ print_args(args)
 
 
 # Ornstein-Ulhenbeck Process explorer to add noise to the action output
-# Taken from #https://github.com/vitchyr/rlkit/blob/master/rlkit/exploration_strategies/ou_strategy.py
+# Adapted from #https://github.com/vitchyr/rlkit/blob/master/rlkit/exploration_strategies/ou_strategy.py
 class OUNoise(object):
     def __init__(self, action_space):
         self.mu           = args.mu
@@ -380,6 +380,7 @@ def step_jor(env, action):
 
 def shape_rew(env):
         state_desc = env.get_state_desc()
+
         prev_state_desc = env.get_prev_state_desc()
         if not prev_state_desc:
             return 0
@@ -474,15 +475,18 @@ def is_done(env, observation, time_step, frame_skip):
         return True
     return False
 
-def shape_reward_s(env, reward, time_step, frame_skip):
+def shape_reward_s(self, reward):
     state_desc = env.get_state_desc()
+    pdb.set_trace()
     max_ep_length=args.num_steps
     death_penalty=0.0
     living_bonus=0.1
     side_dev_coef=0.1
     cross_legs_coef=0.1
-    bending_knees_coef = 0.1
+    bending_knees_coef = 0
+    back_falling_coef = 1
     side_step_penalty = False
+    not_moving_penalty = 5
     # death penalty
     if time_step * frame_skip < max_ep_length:
         reward -= death_penalty
@@ -509,6 +513,16 @@ def shape_reward_s(env, reward, time_step, frame_skip):
     l_knee_flexion = np.minimum(state_desc['joint_pos']['knee_l'][0], 0.)
     bend_knees_bonus = np.abs(r_knee_flexion + l_knee_flexion)
     reward += bending_knees_coef * bend_knees_bonus
+
+    #torso/back fallling penalty
+    back_velocity = np.min(state_desc['body_vel']['torso'])
+    if back_velocity < 0:
+        reward += back_falling_coef * back_velocity
+
+    #not moving penalty
+    cm_vel = np.min(state_desc["misc"]["mass_center_vel"])**2
+    if cm_vel < 1:
+        reward -= not_moving_penalty
 
     # side step penalty
     #if side_step_penalty:
@@ -717,8 +731,118 @@ class MyProstheticsEnv(ProstheticsEnv):
         else:
             obs = self.get_state_desc()
 
+        state_desc = self.get_state_desc()
+        max_ep_length=args.num_steps
+        death_penalty=0.0
+        living_bonus=0.1
+        side_dev_coef=0.1
+        cross_legs_coef=0.1
+        bending_knees_coef = 0
+        back_falling_coef = 0.5
+        side_step_penalty = False
+        not_moving_penalty = 10
+        # death penalty
+        #if time_step * frame_skip < max_ep_length:
+            #reward -= death_penalty
+        #else:
+            #reward += living_bonus
+
+        # deviation from forward direction penalty
+        vy, vz = state_desc['body_vel']['pelvis'][1:]
+        side_dev_penalty = (vy ** 2 + vz ** 2)
+        reward -= side_dev_coef * side_dev_penalty
+
+        # crossing legs penalty
+        pelvis_xy = np.array(state_desc['body_pos']['pelvis'])
+        left = np.array(state_desc['body_pos']['toes_l']) - pelvis_xy
+        right = np.array(state_desc['body_pos']['pros_foot_r']) - pelvis_xy
+        axis = np.array(state_desc['body_pos']['head']) - pelvis_xy
+        cross_legs_penalty = np.cross(left, right).dot(axis)
+        if cross_legs_penalty > 0:
+            cross_legs_penalty = 0.0
+        reward += cross_legs_coef * cross_legs_penalty
+
+        # bending knees bonus
+        r_knee_flexion = np.minimum(state_desc['joint_pos']['knee_r'][0], 0.)
+        l_knee_flexion = np.minimum(state_desc['joint_pos']['knee_l'][0], 0.)
+        bend_knees_bonus = np.abs(r_knee_flexion + l_knee_flexion)
+        reward += bending_knees_coef * bend_knees_bonus
+
+        #torso/back fallling penalty
+        back_velocity = np.min(state_desc['body_vel']['torso'])
+        if back_velocity < 0:
+            reward += back_falling_coef * back_velocity
+
+        #not moving penalty
+        cm_vel = np.min(state_desc["misc"]["mass_center_vel"])**2
+        if cm_vel < 1:
+            reward -= not_moving_penalty
+
+        # side step penalty
+        #if side_step_penalty:
+            #rx, ry, rz = state_desc['body_pos_rot']['pelvis']
+            #R = euler_angles_to_rotation_matrix([rx, ry, rz])
+            #reward *= (1.0 - math.fabs(R[2, 0]))
+
+
         return obs, reward, done, {'rb': rewardb}
 
     def seed(self, seed=None):
         random.seed(seed)
         np.random.seed(seed)
+
+    def shape_reward_s(self, reward):
+        state_desc = self.get_state_desc()
+        max_ep_length=args.num_steps
+        death_penalty=0.0
+        living_bonus=0.1
+        side_dev_coef=0.1
+        cross_legs_coef=0.1
+        bending_knees_coef = 0
+        back_falling_coef = 1
+        side_step_penalty = False
+        not_moving_penalty = 20
+        # death penalty
+        #if time_step * frame_skip < max_ep_length:
+            #reward -= death_penalty
+        #else:
+            #reward += living_bonus
+
+        # deviation from forward direction penalty
+        vy, vz = state_desc['body_vel']['pelvis'][1:]
+        side_dev_penalty = (vy ** 2 + vz ** 2)
+        reward -= side_dev_coef * side_dev_penalty
+
+        # crossing legs penalty
+        pelvis_xy = np.array(state_desc['body_pos']['pelvis'])
+        left = np.array(state_desc['body_pos']['toes_l']) - pelvis_xy
+        right = np.array(state_desc['body_pos']['pros_foot_r']) - pelvis_xy
+        axis = np.array(state_desc['body_pos']['head']) - pelvis_xy
+        cross_legs_penalty = np.cross(left, right).dot(axis)
+        if cross_legs_penalty > 0:
+            cross_legs_penalty = 0.0
+        reward += cross_legs_coef * cross_legs_penalty
+
+        # bending knees bonus
+        r_knee_flexion = np.minimum(state_desc['joint_pos']['knee_r'][0], 0.)
+        l_knee_flexion = np.minimum(state_desc['joint_pos']['knee_l'][0], 0.)
+        bend_knees_bonus = np.abs(r_knee_flexion + l_knee_flexion)
+        reward += bending_knees_coef * bend_knees_bonus
+
+        #torso/back fallling penalty
+        back_velocity = np.min(state_desc['body_vel']['torso'])
+        if back_velocity < 0:
+            reward += back_falling_coef * back_velocity
+
+        #not moving penalty
+        cm_vel = np.min(state_desc["misc"]["mass_center_vel"])**2
+        if cm_vel < 1:
+            reward -= not_moving_penalty
+
+        # side step penalty
+        #if side_step_penalty:
+            #rx, ry, rz = state_desc['body_pos_rot']['pelvis']
+            #R = euler_angles_to_rotation_matrix([rx, ry, rz])
+            #reward *= (1.0 - math.fabs(R[2, 0]))
+
+        return reward
