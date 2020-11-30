@@ -29,4 +29,4 @@ $ python Test.py
 ```
 The final trained model for best and last rewards can be found [in this link](https://drive.google.com/drive/folders/1YtAh_Zt_aVgzBeNTtUcbZae2gE5aaGsX?usp=sharing) or in BCV002 /media/user_home0/dtamayo/AMLproject/saved_model_final. Download it and make sure to have it saved on a folder with the same name as the `checkpoint_dir` parameter in the `arguments.py` file. Run on MobaXTerm to visualize the skeleton!
 
-The [final presentation](AML_Final_Project.pdf) is also attached on the respository, though it doesn't have animations.
+The [final presentation](AML_Final_Project.pdf) is also attached on the respository (though it doesn't have animations) as well as the [CVPR article](Proyecto_AMl.pdf).
